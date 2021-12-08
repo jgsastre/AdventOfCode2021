@@ -1,7 +1,9 @@
 
 { pkgs ? import <nixpkgs> {} }:
   pkgs.mkShell {
-    nativeBuildInputs = [ 
+    nativeBuildInputs = [
       pkgs.clojure
+      pkgs.clojure-lsp
+      pkgs.clj-kondo
     ];
 }
