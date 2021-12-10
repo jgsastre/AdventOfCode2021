@@ -3,5 +3,6 @@
    [clojure.string :as str]))
 
 (defn parse-input [s]
-  (vec (map #(Integer/parseInt %) (str/split s #","))))
+  (let [f (frequencies (map #(Integer/parseInt %) (str/split s #",")))]
+    (reduce (fn [acc x] (conj acc (get f x 0))) [] (range 9))))
 
