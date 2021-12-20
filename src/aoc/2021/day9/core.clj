@@ -3,23 +3,22 @@
    [aoc.2021.day9.input :as input]
    [clojure.set :as s]))
 
-(defn- get-neighbors [rows cols row col]
-  (filter (fn valid-coords? [[x y]]
-            (and (>= x 0) (>= y 0) (< x rows) (< y cols)))
-          [[row (- col 1)] [row (+ col 1)] [(- row 1) col] [(+ row 1) col]]))
+(defn- get-neighbors [rows cols [row col]]
+  (filterv (fn valid-coords? [[x y]]
+             (and (>= x 0) (>= y 0) (< x rows) (< y cols)))
+           [[row (- col 1)] [row (+ col 1)] [(- row 1) col] [(+ row 1) col]]))
 
-(defn- is-min? [rows cols board row col]
-  (->> (get-neighbors rows cols row col)
+(defn- is-min? [rows cols board point]
+  (->> (get-neighbors rows cols point)
        (map (partial get-in board))
-       (every? (partial < (get-in board [row col])))))
+       (every? (partial < (get-in board point)))))
 
 (defn- get-mins [board]
   (let [rows (count board)
         cols (count (first board))]
-    (println rows cols)
     (for [x (range rows)
           y (range cols)
-          :when (is-min? rows cols board x y)]
+          :when (is-min? rows cols board [x y])]
       [x y])))
 
 (defn- sum-of-risk [board]
@@ -30,35 +29,43 @@
 
 (def solution-parte-one (sum-of-risk input/puzzle-input))
 
-(defn- get-basin [board [x y]]
+(let [x input/test-input
+      rows (count x)
+      cols (count (first x))]
+  (->> x
+       get-mins
+       (mapcat (partial get-neighbors rows cols))))
+
+(defn- get-boundary [board basin]
   (let [rows (count board)
-        cols (count (first board))]
-    (loop [basin (set [x y])
-           boundary-candidate (map (fn get-neighbors rows cols  #(= 9 %) (get-neighbors rows cols x y))]
-      (let [boundary (remove #(= 9 %) (get-neighbors rows cols x y))]
-      (if? (empty? boundary) basin
-           (recur
-            (s/union
-             (filter (fn increase-basin? [[x y]]
-                       (some (partial > x) (s/intersection (set (get-neighbors rows cols x y)) basin)))
-                     boundary)
-             basin)
-            new-boundary)))))
+        cols (count (first board))
+        set-of-neighbors (fn [x] (set (get-neighbors rows cols x)))
+        boundary-candidate (transduce (map set-of-neighbors) s/union basin)
+        get-value (partial get-in board)]
+    (set (filter (fn max-and-not-9 [x]
+                   (and
+                    (not= 9 (get-value x))
+                    (some
+                     (comp (partial > (get-value x)) get-value)
+                     (s/intersection (set-of-neighbors x) basin))))
+                 boundary-candidate))))
 
+(defn- get-basin [board m]
+  (loop [basin (set [m])
+         i 0]
+    (let [boundary (get-boundary board basin)]
+      (if (or (empty? boundary) (>= i 1000)) basin
+          (recur (s/union basin boundary) (+ i 1))))))
 
-(set [[0 1] [1 1]])
-(vec (s/intersection #{[0 0] [1 1] [0 1]} #{[1 1]}))
-(s/union #{[0 0] [1 1] [0 1]} #{[1 1]})
-    ;(if? (empty? bounday) basin
-    ;           ;(filter (fn in-basin [x] (every? (and (partial > (get-in board rows cols x y)) (not= 9)) (map #(apply get-in board %)))))
-    ;     (recur
-    ;       (conj basin (filter ((get-neighbors rows cols)))
-    ;       (
+(defn- second-part-respone [board]
+  (->> (get-mins board)
+  (map (partial get-basin board))
+  (map count)
+  (sort >)
+  (take 3)
+  (reduce *)))
 
-(print input/puzzle-input)
+(def solution-test-parte-one (second-part-respone input/test-input))
 
-(print input/test-input)
-(> 9 2 1 2 3 4)
-(get-in [[1 2 3] [4 5 6]] [1 1])
-
+(def solution-part-two (second-part-respone input/puzzle-input))
 
