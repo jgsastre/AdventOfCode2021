@@ -71,15 +71,24 @@
                                         (filter (fn [x] (= \) (get-in x [::value ::corrupted ::received]))))
                                         (map ::line))))
 
-(transduce analyze conj [] "{(<<([([(<<[{((){})([]<>)}]<{{{}{}}{{}[]}}<{(){}}{()[]})>><([<[]{}>([]<>)](<()<>>)){<([]<>")
+(defn- calc-score [{opened ::opened}]
+  (reduce (fn calc-score-fn [acc x]
+            (let [score (cond
+                          (= \( x) 1
+                          (= \[ x) 2
+                          (= \{ x) 3
+                          (= \< x) 4)] (+ score (* 5 acc)))) 0 (reverse opened)))
+(defn- take-middle [cols]
+  (first (drop (int (/ (count cols) 2)) cols)))
 
-(index-and-value (vec (->> input/puzzle-input
-                      (map (partial transduce analyze (fn ([_ x] x) ([x] x)) {}))
-                      (remove (fn [x] (::unfinished x))))))
+(defn- solve-part-two [x] (->> x
+                               (map (partial transduce analyze (fn ([_ x] x) ([x] x)) {}))
+                               (filter (fn [x] (get-in x [::unfinished])))
+                               (map calc-score)
+                               (sort >)
+                               take-middle))
 
-(count input/puzzle-input)
+(def solution-test-part-two (solve-part-two input/test-input))
 
-
-
-
+(def solution-part-two (solve-part-two input/puzzle-input))
 
