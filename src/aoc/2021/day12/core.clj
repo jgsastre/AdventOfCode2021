@@ -14,36 +14,34 @@
 (defn- destinies
   "returns a vector of possible destinies given a map and
   a path so far"
-  [m p]
+  [filters m p]
   (let [last-step (last p)
         possible-next-step (get m last-step)]
-    (filter (fn filter-destinies [x]
-              (or (not (visited? p x)) (important? x))) possible-next-step)))
+    (filter (fn filter-destinies [x] (every? #(% p x) filters)) possible-next-step)))
 
 (defn- add-destinies
-  "given a map and a path returns a vector of paths with new destinies added"
-  [m p]
-  (let [new-destinies (destinies m p)]
+  "given a map and a path returns a vector of paths with new destinies added that are compliant with filters"
+  [filters m p]
+  (let [new-destinies (destinies filters m p)]
     (if (empty? new-destinies)
       [p]
       (map #(conj p %) new-destinies))))
 
-(defn- get-small-caves [m]
-  (filter #(not (important? %)) (keys m)))
 
 (defn- caves-count [path_vector]
   (reduce (fn [acc x] (+ acc (count x))) 0 path_vector))
 
-(defn- get-ways [m]
+(defn- get-ways [m filters]
   (loop [ways [["start"]]
          i 0]
-    (let [new-ways (mapcat #(add-destinies m %) ways)]
+    (let [new-ways (mapcat #(add-destinies filters m %) ways)]
       (if (= (caves-count new-ways) (caves-count ways))
       ways
       (recur new-ways (inc i))))))
 
 (defn- solve-part-one [m]
-  (let [ways (get-ways m)
+  (let [filters [(fn important-or-not-visited [p x] (or (not (visited? p x)) (important? x)))]
+        ways (get-ways m filters)
         ends-correctly? #(= (last %) "end")
     ending-ways (filter ends-correctly? ways)]
   {:count (count ending-ways)}))
@@ -56,23 +54,25 @@
 
 (def solution-part-one (time (solve-part-one input/puzzle-input)))
 
+(defn- non-important-cave-visitable? [p x]
+  (let [times-already-visited (count (transduce (filter #{x}) conj p))
+        non-important-caves-visited (filter #(not (important? %)) p)
+        some-non-important-cave-visited-twice? (< (count (set non-important-caves-visited)) (count non-important-caves-visited))]
+    (or (< times-already-visited 1) (and (< times-already-visited 2) (not some-non-important-cave-visited-twice?)))))
 
+(defn- solve-part-two [m]
+  (let [filters [(fn important-or-visited-twice-at-most [p x] (or (non-important-cave-visitable? p x) (important? x)))
+                 (fn not-returning-to-start [_ x] (not= x "start"))]
+        ways (get-ways m filters)
+        ends-correctly? #(= (last %) "end")
+    ending-ways (filter ends-correctly? ways)]
+  {:count (count ending-ways)}))
 
+(def solution-tiny-input-part-two (solve-part-two input/tiny-input))
 
+(def solution-test-input-part-two (solve-part-two input/test-input))
 
+(def solution-larger-test-input-part-two (solve-part-two input/larger-test-input))
 
-(caves-count (reduce (fn [acc x] (concat acc (add-destinies input/tiny-input x))) []
-'(["start" "b" "end"] ["start" "b" "d"] ["start" "b" "A" "end"] ["start" "b" "A" "c" "A" "end"] ["start" "A" "end"] ["start" "A" "b" "end"] ["start" "A" "b" "d"] ["start" "A" "b" "A" "end"] ["start" "A" "b" "A" "c" "A"] ["start" "A" "c" "A" "end"] ["start" "A" "c" "A" "b" "end"] ["start" "A" "c" "A" "b" "d"] ["start" "A" "c" "A" "b" "A"])))
+(def solution-part-two (time (solve-part-two input/puzzle-input)))
 
-(filter #(= (last %) "end") '(["start" "b" "end"] ["start" "b" "d"] ["start" "b" "A" "end"] ["start" "b" "A" "c" "A" "end"] ["start" "A" "end"] ["start" "A" "b" "end"] ["start" "A" "b" "d"] ["start" "A" "b" "A" "end"] ["start" "A" "b" "A" "c" "A"] ["start" "A" "c" "A" "end"] ["start" "A" "c" "A" "b" "end"] ["start" "A" "c" "A" "b" "d"] ["start" "A" "c" "A" "b" "A"]))
-
-(caves-count '(["start" "b" "end"] ["start" "b" "d"] ["start" "b" "A" "end"] ["start" "b" "A" "c" "A" "end"] ["start" "A" "end"] ["start" "A" "b" "end"] ["start" "A" "b" "d"] ["start" "A" "b" "A" "end"] ["start" "A" "b" "A" "c" "A"] ["start" "A" "c" "A" "end"] ["start" "A" "c" "A" "b" "end"] ["start" "A" "c" "A" "b" "d"] ["start" "A" "c" "A" "b" "A"]))
-(add-destinies input/tiny-input ["start" "A" "c" "A" "b"])
-(conj [1 2 3 4] 1)
-(destinies input/tiny-input ["start", "b", "end"])
-(add-destinies input/tiny-input ["start", "b"])
-(get-small-caves input/tiny-input)
-;((contains-all-small-caves? input/tiny-input)["start" "b" "A" "end"])
-(every? (fn [x] (some #{x} ["start" "b" "A" "end"])) ["b" "end" "start"])
-
-(filter #(= (last %) "end") '(["start" "b" "end"] ["start" "b" d] ["start" "b" "A" "end"] ["start" "b" "A" "c" "A" "end"] ["start" "A" "end"] ["start" "A" "b" "end"] ["start" "A" "b" d] ["start" "A" "b" "A" "end"] ["start" "A" "b" "A" "c" "A" "end"] ["start" "A" "c" "A" "end"] ["start" "A" "c" "A" "b" "end"] ["start" "A" "c" "A" "b" d] ["start" "A" "c" "A" "b" "A" "end"]))
